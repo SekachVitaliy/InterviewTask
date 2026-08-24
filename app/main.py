@@ -1,0 +1,33 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+from app import db
+from app.errors import Conflict, NotFound
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    conn = db.connect()
+    db.migrate(conn)
+    conn.close()
+    yield
+
+
+app = FastAPI(title="Stockroom", lifespan=lifespan)
+
+
+@app.exception_handler(NotFound)
+def not_found(request: Request, exc: NotFound) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(Conflict)
+def conflict(request: Request, exc: Conflict) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok"}
