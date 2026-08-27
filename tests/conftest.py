@@ -33,3 +33,11 @@ def client(db_path):
     app.dependency_overrides[db.get_conn] = override
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def seeded(client):
+    client.post("/products", json={"sku": "SKU-1", "name": "Widget"})
+    client.post("/warehouses", json={"code": "MSK", "name": "Moscow"})
+    client.put("/stock", json={"sku": "SKU-1", "warehouse": "MSK", "on_hand": 10})
+    return client

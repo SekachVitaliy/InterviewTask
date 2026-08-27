@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app import db
 from app.errors import Conflict, NotFound
-from app.routes import products, warehouses
+from app.routes import products, stock, warehouses
 
 
 @asynccontextmanager
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Stockroom", lifespan=lifespan)
 app.include_router(products.router)
 app.include_router(warehouses.router)
+app.include_router(stock.router)
 
 
 @app.exception_handler(NotFound)
