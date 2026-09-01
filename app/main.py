@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app import db
 from app.errors import Conflict, NotFound
-from app.routes import products, stock, warehouses
+from app.routes import products, reservations, stock, warehouses
 
 
 @asynccontextmanager
@@ -20,6 +20,7 @@ app = FastAPI(title="Stockroom", lifespan=lifespan)
 app.include_router(products.router)
 app.include_router(warehouses.router)
 app.include_router(stock.router)
+app.include_router(reservations.router)
 
 
 @app.exception_handler(NotFound)
