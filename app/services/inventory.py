@@ -16,8 +16,8 @@ def set_stock(conn: sqlite3.Connection, sku: str, warehouse: str, on_hand: int) 
     warehouse_id = get_warehouse_id(conn, warehouse)
     conn.execute(
         """
-        INSERT INTO stock (product_id, warehouse_id, qty_on_hand) VALUES (?, ?, ?)
-        ON CONFLICT (product_id, warehouse_id) DO UPDATE SET qty_on_hand = excluded.qty_on_hand
+        INSERT INTO stock (product_id, warehouse_id, on_hand) VALUES (?, ?, ?)
+        ON CONFLICT (product_id, warehouse_id) DO UPDATE SET on_hand = excluded.on_hand
         """,
         (product_id, warehouse_id, on_hand),
     )
@@ -28,7 +28,7 @@ def available(conn: sqlite3.Connection, product_id: int, warehouse_id: int) -> i
     row = conn.execute(
         """
         SELECT
-            COALESCE((SELECT qty_on_hand FROM stock
+            COALESCE((SELECT on_hand FROM stock
                       WHERE product_id = :p AND warehouse_id = :w), 0)
           - COALESCE((SELECT SUM(qty) FROM reservations
                       WHERE product_id = :p AND warehouse_id = :w
@@ -80,7 +80,7 @@ def confirm(conn: sqlite3.Connection, reservation_id: int) -> dict:
     if res["expires_at"] <= utcnow().isoformat():
         raise InvalidState(f"reservation {reservation_id} has expired")
     conn.execute(
-        "UPDATE stock SET qty_on_hand = qty_on_hand - ? WHERE product_id = ? AND warehouse_id = ?",
+        "UPDATE stock SET on_hand = on_hand - ? WHERE product_id = ? AND warehouse_id = ?",
         (res["qty"], res["product_id"], res["warehouse_id"]),
     )
     conn.execute("UPDATE reservations SET status = 'confirmed' WHERE id = ?", (reservation_id,))
