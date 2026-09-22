@@ -1,5 +1,8 @@
-def reserve(client, qty):
-    return client.post("/reservations", json={"sku": "SKU-1", "warehouse": "MSK", "qty": qty})
+def reserve(client, qty, ttl_seconds=900):
+    return client.post(
+        "/reservations",
+        json={"sku": "SKU-1", "warehouse": "MSK", "qty": qty, "ttl_seconds": ttl_seconds},
+    )
 
 
 def available(client):
@@ -53,3 +56,16 @@ def test_get_reservation(seeded):
 
 def test_unknown_reservation_is_404(seeded):
     assert seeded.get("/reservations/999").status_code == 404
+
+
+def test_custom_ttl(seeded):
+    from datetime import datetime
+
+    body = reserve(seeded, 1, ttl_seconds=120).json()
+    delta = datetime.fromisoformat(body["expires_at"]) - datetime.fromisoformat(body["created_at"])
+    assert delta.total_seconds() == 120
+
+
+def test_ttl_out_of_range_rejected(seeded):
+    assert reserve(seeded, 1, ttl_seconds=5).status_code == 422
+    assert reserve(seeded, 1, ttl_seconds=7200).status_code == 422

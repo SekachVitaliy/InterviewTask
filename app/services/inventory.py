@@ -4,8 +4,6 @@ from datetime import datetime, timedelta, timezone
 from app.errors import InsufficientStock, InvalidState, NotFound
 from app.services.catalog import get_product_id, get_warehouse_id
 
-HOLD_TTL = timedelta(minutes=15)
-
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -56,7 +54,7 @@ def get_reservation(conn: sqlite3.Connection, reservation_id: int) -> dict:
     return dict(row)
 
 
-def reserve(conn: sqlite3.Connection, sku: str, warehouse: str, qty: int) -> dict:
+def reserve(conn: sqlite3.Connection, sku: str, warehouse: str, qty: int, ttl_seconds: int | None) -> dict:
     product_id = get_product_id(conn, sku)
     warehouse_id = get_warehouse_id(conn, warehouse)
     if available(conn, product_id, warehouse_id) < qty:
@@ -67,7 +65,7 @@ def reserve(conn: sqlite3.Connection, sku: str, warehouse: str, qty: int) -> dic
         INSERT INTO reservations (product_id, warehouse_id, qty, status, expires_at, created_at)
         VALUES (?, ?, ?, 'held', ?, ?)
         """,
-        (product_id, warehouse_id, qty, (now + HOLD_TTL).isoformat(), now.isoformat()),
+        (product_id, warehouse_id, qty, (now + timedelta(seconds=ttl_seconds)).isoformat(), now.isoformat()),
     )
     conn.commit()
     return get_reservation(conn, cur.lastrowid)

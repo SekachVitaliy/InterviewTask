@@ -13,6 +13,7 @@ class ReservationIn(BaseModel):
     sku: str
     warehouse: str
     qty: int = Field(gt=0)
+    ttl_seconds: int | None = Field(default=None, ge=60, le=3600)
 
 
 class ReservationOut(BaseModel):
@@ -27,7 +28,7 @@ class ReservationOut(BaseModel):
 
 @router.post("", status_code=201, response_model=ReservationOut)
 def create_reservation(body: ReservationIn, conn: sqlite3.Connection = Depends(get_conn)):
-    return inventory.reserve(conn, body.sku, body.warehouse, body.qty)
+    return inventory.reserve(conn, body.sku, body.warehouse, body.qty, body.ttl_seconds)
 
 
 @router.get("/{reservation_id}", response_model=ReservationOut)

@@ -22,7 +22,7 @@ Migrations from `migrations/` are applied automatically on startup.
 | product     | `sku`  |                                                              |
 | warehouse   | `code` |                                                              |
 | stock       |        | on-hand quantity of a product in a warehouse                 |
-| reservation | `id`   | `held` → `confirmed` or `cancelled`; a hold lasts 15 minutes |
+| reservation | `id`   | `held` → `confirmed` or `cancelled`; a hold lasts `ttl_seconds` (default 15 minutes) |
 
 `available = on_hand − sum of held, not yet expired reservations`
 
@@ -34,7 +34,7 @@ Migrations from `migrations/` are applied automatically on startup.
 | POST   | `/warehouses`                                | `{code, name}`              |
 | PUT    | `/stock`                                     | `{sku, warehouse, on_hand}` |
 | GET    | `/products/{sku}/availability?warehouse=MSK` |                             |
-| POST   | `/reservations`                              | `{sku, warehouse, qty}`     |
+| POST   | `/reservations`                              | `{sku, warehouse, qty, ttl_seconds?}` — `ttl_seconds` 60–3600, default 900 |
 | GET    | `/reservations/{id}`                         |                             |
 | POST   | `/reservations/{id}/confirm`                 |                             |
 | POST   | `/reservations/{id}/cancel`                  |                             |
