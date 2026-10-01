@@ -69,3 +69,19 @@ def test_custom_ttl(seeded):
 def test_ttl_out_of_range_rejected(seeded):
     assert reserve(seeded, 1, ttl_seconds=5).status_code == 422
     assert reserve(seeded, 1, ttl_seconds=7200).status_code == 422
+
+
+def test_bulk_reserve(seeded):
+    seeded.post("/products", json={"sku": "SKU-2", "name": "Gadget"})
+    seeded.put("/stock", json={"sku": "SKU-2", "warehouse": "MSK", "on_hand": 5})
+    r = seeded.post(
+        "/reservations/bulk",
+        json={"warehouse": "MSK", "items": [{"sku": "SKU-1", "qty": 2}, {"sku": "SKU-2", "qty": 3}]},
+    )
+    assert r.status_code == 201
+    assert [(x["sku"], x["qty"]) for x in r.json()] == [("SKU-1", 2), ("SKU-2", 3)]
+    assert available(seeded) == 8
+
+
+def test_bulk_reserve_requires_items(seeded):
+    assert seeded.post("/reservations/bulk", json={"warehouse": "MSK", "items": []}).status_code == 422

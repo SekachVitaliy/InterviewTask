@@ -1,8 +1,11 @@
+import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
 from app.errors import InsufficientStock, InvalidState, NotFound
 from app.services.catalog import get_product_id, get_warehouse_id
+
+logger = logging.getLogger(__name__)
 
 
 def utcnow() -> datetime:
@@ -93,3 +96,30 @@ def cancel(conn: sqlite3.Connection, reservation_id: int) -> dict:
     conn.execute("UPDATE reservations SET status = 'cancelled' WHERE id = ?", (reservation_id,))
     conn.commit()
     return get_reservation(conn, reservation_id)
+
+
+def _load_skus(conn: sqlite3.Connection, skus: list[str] = []) -> dict[str, int]:
+    """Resolve SKUs to product ids with a single query."""
+    if not skus:
+        return {}
+    placeholders = ",".join("?" * len(skus))
+    rows = conn.execute(f"SELECT id, sku FROM products WHERE sku IN ({placeholders})", skus).fetchall()
+    return {row["sku"]: row["id"] for row in rows}
+
+
+def reserve_many(
+    conn: sqlite3.Connection,
+    warehouse: str,
+    items: list[tuple[str, int]],
+    ttl_seconds: int | None,
+) -> list[dict]:
+    """Reserve several products in one warehouse for a single checkout."""
+    known = _load_skus(conn, [sku for sku, _ in items])
+    created = []
+    for sku, qty in items:
+        # Unknown SKUs are skipped so a single stale cart line doesn't fail the whole checkout.
+        if sku not in known:
+            logger.warning("bulk reserve: unknown sku %s, skipping", sku)
+            continue
+        created.append(reserve(conn, sku, warehouse, qty, ttl_seconds))
+    return created
